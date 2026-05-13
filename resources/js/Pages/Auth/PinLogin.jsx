@@ -23,6 +23,23 @@ export default function PinLogin() {
     };
 
     useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                if (data.pin.length < 4) {
+                    setData('pin', data.pin + e.key);
+                }
+            } else if (e.key === 'Backspace') {
+                setData('pin', data.pin.slice(0, -1));
+            } else if (e.key === 'Escape') {
+                setData('pin', '');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [data.pin]);
+
+    useEffect(() => {
         if (data.pin.length === 4) {
             submit();
         }
