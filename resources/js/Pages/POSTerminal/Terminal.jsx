@@ -11,6 +11,8 @@ export default function Terminal({ auth, categories, products, tables, counters,
     const [selectedCounter, setSelectedCounter] = useState(counters[0]?.id || null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showTableModal, setShowTableModal] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('CASH');
+    const [amountReceived, setAmountReceived] = useState(0);
 
     // Filtering logic
     const filteredProducts = useMemo(() => {
@@ -57,6 +59,8 @@ export default function Terminal({ auth, categories, products, tables, counters,
             table_id: selectedTable,
             counter_id: selectedCounter,
             type: orderType,
+            payment_method: paymentMethod,
+            amount_received: amountReceived,
             items: cart.map(item => ({
                 product_id: item.id,
                 quantity: item.quantity,
@@ -68,6 +72,8 @@ export default function Terminal({ auth, categories, products, tables, counters,
                 setCart([]);
                 setSelectedTable(null);
                 setShowPaymentModal(false);
+                setAmountReceived(0);
+                setPaymentMethod('CASH');
             }
         });
     };
@@ -223,7 +229,10 @@ export default function Terminal({ auth, categories, products, tables, counters,
                                 Clear
                             </button>
                             <button 
-                                onClick={() => setShowPaymentModal(true)}
+                                onClick={() => {
+                                    setAmountReceived(cartTotal);
+                                    setShowPaymentModal(true);
+                                }}
                                 disabled={cart.length === 0}
                                 className="h-12 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
@@ -274,9 +283,10 @@ export default function Terminal({ auth, categories, products, tables, counters,
                                     {['CASH', 'CARD', 'M-PESA'].map(method => (
                                         <button
                                             key={method}
-                                            className="aspect-square border border-gray-900 flex flex-col items-center justify-center space-y-4 hover:bg-gray-900 hover:text-white transition-all group"
+                                            onClick={() => setPaymentMethod(method)}
+                                            className={`aspect-square border border-gray-900 flex flex-col items-center justify-center space-y-4 transition-all group ${paymentMethod === method ? 'bg-gray-900 text-white' : 'hover:bg-gray-900 hover:text-white'}`}
                                         >
-                                            <div className="w-12 h-12 bg-gray-100 border border-gray-900 flex items-center justify-center group-hover:bg-white group-hover:text-gray-900">
+                                            <div className={`w-12 h-12 border border-gray-900 flex items-center justify-center ${paymentMethod === method ? 'bg-white text-gray-900' : 'bg-gray-100 group-hover:bg-white group-hover:text-gray-900'}`}>
                                                 {method === 'CASH' && '💵'}
                                                 {method === 'CARD' && '💳'}
                                                 {method === 'M-PESA' && '📱'}
@@ -294,7 +304,8 @@ export default function Terminal({ auth, categories, products, tables, counters,
                                             <input
                                                 type="number"
                                                 className="w-full h-16 border border-gray-900 bg-gray-50 px-16 text-2xl font-black focus:ring-0 focus:border-gray-900"
-                                                defaultValue={cartTotal}
+                                                value={amountReceived}
+                                                onChange={(e) => setAmountReceived(parseFloat(e.target.value) || 0)}
                                             />
                                         </div>
                                     </div>
@@ -302,11 +313,12 @@ export default function Terminal({ auth, categories, products, tables, counters,
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="p-4 bg-gray-50 border border-gray-900">
                                             <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">Balance/Change</p>
-                                            <p className="text-xl font-black">{currency} 0.00</p>
+                                            <p className="text-xl font-black">{currency} {Math.max(0, amountReceived - cartTotal).toFixed(2)}</p>
                                         </div>
                                         <button
                                             onClick={handlePlaceOrder}
-                                            className="bg-gray-900 text-white font-black uppercase tracking-widest hover:bg-black transition-all"
+                                            disabled={amountReceived < cartTotal}
+                                            className="bg-gray-900 text-white font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Complete Order
                                         </button>

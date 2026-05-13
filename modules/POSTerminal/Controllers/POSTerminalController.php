@@ -44,6 +44,8 @@ class POSTerminalController extends Controller
             'table_id' => 'nullable|exists:tables,id',
             'counter_id' => 'required|exists:counters,id',
             'type' => 'required|in:dine_in,takeaway',
+            'payment_method' => 'required|string',
+            'amount_received' => 'required|numeric|min:' . $request->total_amount,
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -58,7 +60,7 @@ class POSTerminalController extends Controller
                 'table_id' => $validated['table_id'] ?? null,
                 'counter_id' => $validated['counter_id'],
                 'total_amount' => $validated['total_amount'],
-                'status' => 'pending',
+                'status' => 'paid',
                 'type' => $validated['type'],
             ]);
 
@@ -72,12 +74,21 @@ class POSTerminalController extends Controller
                 ]);
             }
 
+            // Create Transaction
+            \Modules\POSTerminal\Models\Transaction::create([
+                'order_id' => $order->id,
+                'payment_method' => $validated['payment_method'],
+                'amount' => $validated['total_amount'],
+                'status' => 'completed',
+                'reference_number' => 'TRX-' . strtoupper(uniqid()),
+            ]);
+
             // Update table status if dine-in
             if ($validated['type'] === 'dine_in' && $validated['table_id']) {
                 Table::where('id', $validated['table_id'])->update(['status' => 'occupied']);
             }
 
-            return redirect()->back()->with('success', 'Order placed successfully!');
+            return redirect()->back()->with('success', 'Order placed and paid successfully!');
         });
     }
 }
