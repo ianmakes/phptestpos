@@ -19,10 +19,25 @@ class POSTerminalController extends Controller
     {
         $categories = Category::orderBy('sort_order')->get(['id', 'name', 'icon']);
         
-        $products = Product::where('is_available', true)
-            ->where('is_pos_visible', true)
-            ->with('counters')
-            ->get(['id', 'category_id', 'name', 'price', 'image_url', 'type']);
+        $productsQuery = Product::where('is_available', true);
+
+        // Check if is_pos_visible column exists to prevent crash if migrations haven't run
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_pos_visible')) {
+            $productsQuery->where('is_pos_visible', true);
+        }
+
+        $products = $productsQuery->with('counters')
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'category_id' => $product->category_id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'image_url' => $product->image_url,
+                    'type' => $product->type ?? 'food', // Fallback if type column is missing
+                ];
+            });
 
         $tables = Table::where('status', 'available')
             ->get(['id', 'name', 'zone_id']);
