@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 use Modules\PlaceholderModule\Controllers\PlaceholderController;
 
 Route::middleware(['web', 'auth'])->group(function () {
-    Route::get('/pos/terminal', [PlaceholderController::class, 'show'])->defaults('moduleName', 'pos-terminal')->name('pos.terminal');
     Route::get('/stock/units', [PlaceholderController::class, 'show'])->defaults('moduleName', 'ingredient-units')->name('ingredients.units');
     Route::get('/stock/categories', [PlaceholderController::class, 'show'])->defaults('moduleName', 'ingredient-categories')->name('ingredients.categories');
     Route::get('/stock/ingredients', [PlaceholderController::class, 'show'])->defaults('moduleName', 'ingredients')->name('ingredients.index');
