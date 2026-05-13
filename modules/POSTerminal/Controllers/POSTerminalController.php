@@ -39,10 +39,24 @@ class POSTerminalController extends Controller
                 ];
             });
 
-        $tables = Table::where('status', 'available')
-            ->get(['id', 'name', 'zone_id']);
+        $tablesQuery = Table::where('status', 'available');
+        $tablesColumns = ['id', 'zone_id'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tables', 'table_number')) {
+            $tablesColumns[] = 'table_number';
+        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('tables', 'name')) {
+            $tablesColumns[] = 'name';
+        }
 
-        $counters = Counter::where('is_active', true)->get(['id', 'name']);
+        $tables = $tablesQuery->get($tablesColumns)->map(function ($table) {
+            return [
+                'id' => $table->id,
+                'name' => $table->table_number ?? $table->name ?? 'T-' . $table->id,
+                'zone_id' => $table->zone_id
+            ];
+        });
+
+        $countersQuery = Counter::where('is_active', true);
+        $counters = $countersQuery->get(['id', 'name']);
 
         return Inertia::render('POSTerminal/Terminal', [
             'categories' => $categories,
