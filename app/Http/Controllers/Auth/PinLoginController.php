@@ -12,7 +12,10 @@ class PinLoginController extends Controller
 {
     public function show()
     {
-        return Inertia::render('Auth/PinLogin');
+        return Inertia::render('Auth/Login', [
+            'canResetPassword' => \Illuminate\Support\Facades\Route::has('password.request'),
+            'status' => session('status'),
+        ]);
     }
 
     public function store(Request $request)
