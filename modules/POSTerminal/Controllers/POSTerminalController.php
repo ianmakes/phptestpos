@@ -1,0 +1,83 @@
+<?php
+
+namespace Modules\POSTerminal\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Modules\MenuManagement\Models\Category;
+use Modules\MenuManagement\Models\Product;
+use Modules\MenuManagement\Models\Counter;
+use Modules\TableManagement\Models\Table;
+use Modules\POSTerminal\Models\Order;
+use Modules\POSTerminal\Models\OrderItem;
+use Illuminate\Support\Facades\DB;
+
+class POSTerminalController extends Controller
+{
+    public function index()
+    {
+        $categories = Category::orderBy('sort_order')->get(['id', 'name', 'icon']);
+        
+        $products = Product::where('is_available', true)
+            ->where('is_pos_visible', true)
+            ->with('counters')
+            ->get(['id', 'category_id', 'name', 'price', 'image_url', 'type']);
+
+        $tables = Table::where('status', 'available')
+            ->get(['id', 'name', 'zone_id']);
+
+        $counters = Counter::where('is_active', true)->get(['id', 'name']);
+
+        return Inertia::render('POSTerminal/Terminal', [
+            'categories' => $categories,
+            'products' => $products,
+            'tables' => $tables,
+            'counters' => $counters,
+            'currency' => 'KSh.'
+        ]);
+    }
+
+    public function placeOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'table_id' => 'nullable|exists:tables,id',
+            'counter_id' => 'required|exists:counters,id',
+            'type' => 'required|in:dine_in,takeaway',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric',
+            'total_amount' => 'required|numeric',
+        ]);
+
+        return DB::transaction(function () use ($validated) {
+            $order = Order::create([
+                'order_number' => 'ORD-' . strtoupper(uniqid()),
+                'user_id' => auth()->id(),
+                'table_id' => $validated['table_id'] ?? null,
+                'counter_id' => $validated['counter_id'],
+                'total_amount' => $validated['total_amount'],
+                'status' => 'pending',
+                'type' => $validated['type'],
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'subtotal' => $item['quantity'] * $item['price'],
+                ]);
+            }
+
+            // Update table status if dine-in
+            if ($validated['type'] === 'dine_in' && $validated['table_id']) {
+                Table::where('id', $validated['table_id'])->update(['status' => 'occupied']);
+            }
+
+            return redirect()->back()->with('success', 'Order placed successfully!');
+        });
+    }
+}
